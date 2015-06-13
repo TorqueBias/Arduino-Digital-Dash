@@ -51,7 +51,7 @@ boolean dataReady = false;//Indicates whether valid data has been recieved from 
 boolean readingAFR = false;//Indicates that it is now trying to read AFR values.
 boolean readingECU = false;//Indicates that it is now trying to read ECU values.
 
-boolean diagnostics=true; //Enables dev features for diags and testing
+boolean diagnostics=false; //Enables dev features for diags and testing
 
 
 // All of these variable declarations need to be cleaned up and organized. Some probably aren't even used, or are used and shouldn't be.

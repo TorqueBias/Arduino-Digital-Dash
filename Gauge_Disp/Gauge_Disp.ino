@@ -251,7 +251,7 @@ void setup()
         if (logData){//Inserts Column Headings in Log File
 		time = false; updateTime(); //First Column Heading is time in MS with current time as heading prefix
 		file.print(hourTime); file.print(F("-")); file.print(minTime); file.print(F("-")); file.print(secTime); file.print(F("-")); //Insert Time into first column heading
-		file.println(F("MS,MRP,IAT,IDC,RPM,TPS,FBKC,AFR,WARN")); //Insert column headings into file.
+		file.println(F("MS,MRP,IAT,IDC,RPM,TPS,FBKC,AFR,MAF,SPD,OIL,WARN")); //Insert column headings into file.
 	}
 	
 
@@ -351,7 +351,7 @@ void processData(){
 	checkWarn(rxdata.AFR, rxdata.IAT, rxdata.IDC, rxdata.MRP, rxdata.RPM, rxdata.TPS, rxdata.KCK);//Looks for patterns that indicate a problem.
 	
         //Writes CSV data to SD Card
-        if (logData){
+        if (logData && rxdata.RPM >= 1750){ //If SD card is working, log the data. Disable logging at idle to prevent data corruption when turning off ignition.
                 file.print(millis());
 		file.print(F(","));
 		file.print(fMRP);
@@ -367,6 +367,12 @@ void processData(){
 		file.print(fKCK);
 		file.print(F(","));
 		file.print(fAFR);
+		file.print(F(","));
+                file.print(rxdata.MAF);
+		file.print(F(","));
+                file.print(rxdata.SPD);
+		file.print(F(","));
+                file.print(rxdata.OIL);
 		file.print(F(","));
 		file.print(warning);
 		//Finishes record in file
