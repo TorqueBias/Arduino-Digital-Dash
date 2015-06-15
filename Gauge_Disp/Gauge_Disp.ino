@@ -54,15 +54,16 @@ struct RECEIVE_DATA_STRUCTURE{
   int MRP;
   int RPM;
   int IAT;
-  int IDC;
-  int TPS;
+  byte IDC;
+  byte TPS;
   int KCK;
-  byte LKC;
   byte MAF;
   byte FUL;
-  byte GER;
   byte SPD;
   int OIL;
+  int KSCNL;
+  int KSFO;
+  int KSTLF;
 };
 
 struct SEND_DATA_STRUCTURE{
@@ -251,7 +252,7 @@ void setup()
         if (logData){//Inserts Column Headings in Log File
 		time = false; updateTime(); //First Column Heading is time in MS with current time as heading prefix
 		file.print(hourTime); file.print(F("-")); file.print(minTime); file.print(F("-")); file.print(secTime); file.print(F("-")); //Insert Time into first column heading
-		file.println(F("MS,MRP,IAT,IDC,RPM,TPS,FBKC,AFR,MAF,SPD,OIL,WARN")); //Insert column headings into file.
+		file.println(F("MS,MRP,IAT,IDC,RPM,TPS,FBKC,AFR,MAF,SPD,OIL,KSCNL,KSFO,KSTLF,WARN")); //Insert column headings into file.
 	}
 	
 
@@ -339,10 +340,8 @@ void processData(){
             rxdata.MRP= -110 + ((mover)*310); 
             rxdata.RPM= (mover) * 7000;
             rxdata.AFR= 90 + ((mover)*133);
-            rxdata.LKC=255*mover;
             rxdata.MAF=255*mover;
             rxdata.FUL=255*mover;
-            rxdata.GER=255*mover;
             rxdata.SPD=255*mover;
 	}
         
@@ -373,6 +372,12 @@ void processData(){
                 file.print(rxdata.SPD);
 		file.print(F(","));
                 file.print(rxdata.OIL);
+		file.print(F(","));
+                file.print(rxdata.KSCNL);
+		file.print(F(","));
+                file.print(rxdata.KSFO);
+		file.print(F(","));
+                file.print(rxdata.KSTLF);
 		file.print(F(","));
 		file.print(warning);
 		//Finishes record in file
@@ -527,7 +532,7 @@ void updateGauges(int AFR, int IAT, int IDC, int MRP, int RPM, int TPS, int KCK)
 	
         
 	if ((AFR != pAFR) || refresh){ //Only do the work if the data has changed, or refresh flag is set.
-		if (AFR >= 90 && AFR <= 223){ // Values outside this range indicate non-operational info such as Warmup.
+		if ((AFR >= 90 && AFR <= 223) || refresh){ // Values outside this range indicate non-operational info such as Warmup.
                         ringMeter(AFR, pAFR,105,160,1,10,78," AFR",4,1,4,2,114); //Draw the Gague
                         pAFR = AFR; //Reset the previous value for next time
 		}
@@ -640,12 +645,13 @@ void setupMenu(){ //This draws the Menu Template
 	lcd.println(F("IDC"));
 	lcd.println(F("TPS"));
 	lcd.println(F("KCK"));
-	lcd.println(F("LKC"));
 	lcd.println(F("MAF"));
 	lcd.println(F("FUL"));
-	lcd.println(F("GER"));
 	lcd.println(F("SPD"));
 	lcd.println(F("OIL"));
+        lcd.println(F("KSC"));
+        lcd.println(F("KSF"));
+        lcd.println(F("KST"));
 	charS = 2;
 	bgColor = ILI9341_WHITE;
 	fgColor = ILI9341_BLACK;
@@ -667,12 +673,13 @@ void updateMenu(){ //Fills in menu screen with data
 	updateLCD(5, 6, 0);lcd.print(rxdata.IDC);
 	updateLCD(5, 7, 0);lcd.print(rxdata.TPS);
 	updateLCD(5, 8, 0);lcd.print(rxdata.KCK);
-	updateLCD(5, 9, 0);lcd.print(rxdata.LKC);
-	updateLCD(5, 10, 0);lcd.print(rxdata.MAF);
-	updateLCD(5, 11, 0);lcd.print(rxdata.FUL);
-	updateLCD(5, 12, 0);lcd.print(rxdata.GER);
-	updateLCD(5, 13, 0);lcd.print(rxdata.SPD);
-	updateLCD(5, 14, 0);lcd.print(rxdata.OIL);
+	updateLCD(5, 9, 0);lcd.print(rxdata.MAF);
+	updateLCD(5, 10, 0);lcd.print(rxdata.FUL);
+	updateLCD(5, 11, 0);lcd.print(rxdata.SPD);
+	updateLCD(5, 12, 0);lcd.print(rxdata.OIL);
+        updateLCD(5, 12, 0);lcd.print(rxdata.KSCNL);
+        updateLCD(5, 12, 0);lcd.print(rxdata.KSFO);
+        updateLCD(5, 12, 0);lcd.print(rxdata.KSTLF);
   
 }
 

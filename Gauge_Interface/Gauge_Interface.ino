@@ -20,15 +20,16 @@ struct SEND_DATA_STRUCTURE{
   int MRP;
   int RPM;
   int IAT;
-  int IDC;
-  int TPS;
+  byte IDC;
+  byte TPS;
   int KCK;
-  byte LKC;
   byte MAF;
   byte FUL;
-  byte GER;
   byte SPD;
   int OIL;
+  int KSCNL;
+  int KSFO;
+  int KSTLF;
 };
 
 //give a name to the group of data
@@ -40,8 +41,8 @@ SEND_DATA_STRUCTURE txdata;
 SoftwareSerial auxSerial(9, 8); //Rx, Tx - For Wideband Serial Stream
 
 //ECU variables
-byte ECUbytes[30];//must be at least as large as data received or will crash.
-byte pollECUbytes[82];//must be at least as large as data sent or will crash.
+byte ECUbytes[60];//must be at least as large as data received or will crash.
+byte pollECUbytes[100];//must be at least as large as data sent or will crash.
 
 int pollECUlength = 0;//size of packet to xmit (populated by packet builder)
 int readECUlength = 6;//size of packet to receive, initialized with header and checksum count.
@@ -69,15 +70,14 @@ int IAT=0;
 int IDC=0;
 int TPS=0;
 float KCK=0.0;
-byte LKC;
 byte MAF;
 byte FUL;
-byte GER;
 byte SPD;
-byte LAT;
-byte YAW;
 byte DIF;
 int OIL;
+int KSCNL;
+int KSFO;
+int KSTLF;
 
 void setup(){
   Serial.begin(57600); //USB port for diagnostics
@@ -152,7 +152,7 @@ void buildPkt(){
 	
 	byte ECUheader[7] = { 128, 16, 240, 0, 168, 01, 00 };//Begin,Begin,Begin,Length,Address(single),(00=request/response, 01=stream),Space for CheckSum
 
-	byte params[21][4] = { // These are the addressed that will be added to the request packet. Order here will be order of data in response
+	byte params[30][4] = { // These are the addressed that will be added to the request packet. Order here will be order of data in response
                         //MPG Calculation = (([MPH]/3600)/(([MAF]/[AFR])/2880))
 		        //{0,0,36,1},//MRP This address was limited to 20psi
 			{ 255, 77, 208, 4 },//MRP1
@@ -168,11 +168,23 @@ void buildPkt(){
 			{ 255, 88, 205, 3 },//FBKC2
 			{ 255, 88, 206, 2 },//FBKC3
 			{ 255, 88, 207, 1 },//FBKC4
-                        {   0,  1, 153, 1 },//LKC ((x*0.25)-32)
+                        //{   0,  1, 153, 1 },//LKC ((x*0.25)-32) , Doesn't work on '06
                         {   0,  0,  13, 1 },//MAF (x/100)
                         {   0,  0,  46, 1 },//Fuel Level V (x/50)
-                        {   0,  0,  74, 1 },//Gear (x+1)
+                        //{   0,  0,  74, 1 },//Gear (x+1) , Doesn't work on '06
                         {   0,  0,  16, 1 },//Speed (x*0.621371192)
+                        { 255, 47, 232, 4 },//Knock Sensor corrected noise level 1 
+                        { 255, 47, 233, 3 },//Knock Sensor corrected noise level 2
+                        { 255, 47, 234, 2 },//Knock Sensor corrected noise level 3
+                        { 255, 47, 235, 1 },//Knock Sensor corrected noise level 4
+                        { 255, 48,  88, 4 },//Knock Sensor Final Output 1
+                        { 255, 48,  89, 3 },//Knock Sensor Final Output 2
+                        { 255, 48,  90, 2 },//Knock Sensor Final Output 3
+                        { 255, 48,  91, 1 },//Knock Sensor Final Output 4
+                        { 255, 48,  64, 4 },//Knock Sensor Threshold Level Final 1
+                        { 255, 48,  65, 3 },//Knock Sensor Threshold Level Final 2
+                        { 255, 48,  66, 3 },//Knock Sensor Threshold Level Final 3
+                        { 255, 48,  67, 3 },//Knock Sensor Threshold Level Final 4
                         //{   0,  1, 241, 1 },//Lateral G m/sec2? (x*1.0862), Doesn't work on '06
                         //{   0,  1, 242, 1 },//Yaw deg/s (x*0.19118), Doesn't work on '06
                         //{   0,  1, 243, 1 },//DCCD (x), Doesn't work on '06
@@ -441,20 +453,41 @@ void processData(){
 	paraNum++;
 	int KCKbyte4 = ECUbytes[paraNum];
 	paraNum++;
-
-        txdata.LKC = ECUbytes[paraNum];
-	paraNum++;
         
         txdata.MAF = ECUbytes[paraNum];
 	paraNum++;
        
         txdata.FUL = ECUbytes[paraNum];
 	paraNum++;
-
-        txdata.GER = ECUbytes[paraNum];
-	paraNum++;
         
         txdata.SPD = ECUbytes[paraNum];
+	paraNum++;
+
+        byte KSCNL1 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSCNL2 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSCNL3 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSCNL4 = ECUbytes[paraNum];
+	paraNum++;
+
+        byte KSFO1 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSFO2 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSFO3 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSFO4 = ECUbytes[paraNum];
+	paraNum++;
+
+        byte KSTLF1 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSTLF2 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSTLF3 = ECUbytes[paraNum];
+	paraNum++;
+        byte KSTLF4 = ECUbytes[paraNum];
 	paraNum++;
         
         
@@ -465,9 +498,12 @@ void processData(){
 	long RPM = computeRPM(RPMbyte1, RPMbyte2);
 	int TPS = computeTPS(TPSbyte);
 	float KCK = computeKCK(KCKbyte1, KCKbyte2, KCKbyte3, KCKbyte4);
+        int KSCNL = computeKSCNL(KSCNL1,KSCNL2,KSCNL3,KSCNL4);
+        int KSFO = computeKSFO(KSFO1,KSFO2,KSFO3,KSFO4);
+        int KSTLF = computeKSTLF(KSTLF1,KSTLF2,KSTLF3,KSTLF4);
         txdata.OIL=analogRead(A0);
-        Serial.print("OIL:");
-        Serial.println(txdata.OIL);
+        //Serial.print("OIL:");
+        //Serial.println(txdata.OIL);
         
 	if(diagnostics){ //Generates Test Values, uses too much memory, remove when not dev.
             float mover=random(100)/100.00;
@@ -475,10 +511,8 @@ void processData(){
             txdata.AFR=AFR*10;
             MRP= -11.0 + ((mover)*31.0); 
             RPM= (mover) * 7000;
-            txdata.LKC=255*mover;
             txdata.MAF=255*mover;
             txdata.FUL=255*mover;
-            txdata.GER=255*mover;
             txdata.SPD=255*mover;
 	}
         
@@ -489,6 +523,9 @@ void processData(){
         txdata.RPM=RPM;
         txdata.TPS=TPS;
         txdata.KCK=KCK*10;
+        txdata.KSCNL=KSCNL;
+        txdata.KSFO=KSFO;
+        txdata.KSTLF=KSTLF;
 
 }
 
@@ -541,6 +578,54 @@ float computeKCK(int fbkc1, int fbkc2, int fbkc3, int fbkc4){
 	float kck = conv.asFloat;
 	//if (kck < -10 || kck>1) kck = 0;
 	return kck;
+}
+
+float computeKSCNL(int kscnl1, int kscnl2, int kscnl3, int kscnl4){
+              /*This next one is a tricky little bastard. Converting 4-byte values into usable numbers is a royal pain in the ass.
+        This little beauty magically links two memory registers together so that anything put in one can be read as the other.
+        Just populate the conv.asBytes[] array in reverse order, and then read the results as conv.asFloat.*/
+        union{
+        	byte asBytes[4];
+        	float asFloat;
+        } conv;
+	conv.asBytes[3] = kscnl1;
+	conv.asBytes[2] = kscnl2;
+	conv.asBytes[1] = kscnl3;
+	conv.asBytes[0] = kscnl4;
+	float kscnl = conv.asFloat;
+	return kscnl;
+}
+
+float computeKSFO(int ksfo1, int ksfo2, int ksfo3, int ksfo4){
+              /*This next one is a tricky little bastard. Converting 4-byte values into usable numbers is a royal pain in the ass.
+        This little beauty magically links two memory registers together so that anything put in one can be read as the other.
+        Just populate the conv.asBytes[] array in reverse order, and then read the results as conv.asFloat.*/
+        union{
+        	byte asBytes[4];
+        	float asFloat;
+        } conv;
+	conv.asBytes[3] = ksfo1;
+	conv.asBytes[2] = ksfo2;
+	conv.asBytes[1] = ksfo3;
+	conv.asBytes[0] = ksfo4;
+	float ksfo = conv.asFloat;
+	return ksfo;
+}
+
+float computeKSTLF(int kstlf1, int kstlf2, int kstlf3, int kstlf4){
+              /*This next one is a tricky little bastard. Converting 4-byte values into usable numbers is a royal pain in the ass.
+        This little beauty magically links two memory registers together so that anything put in one can be read as the other.
+        Just populate the conv.asBytes[] array in reverse order, and then read the results as conv.asFloat.*/
+        union{
+        	byte asBytes[4];
+        	float asFloat;
+        } conv;
+	conv.asBytes[3] = kstlf1;
+	conv.asBytes[2] = kstlf2;
+	conv.asBytes[1] = kstlf3;
+	conv.asBytes[0] = kstlf4;
+	float kstlf = conv.asFloat;
+	return kstlf;
 }
 
 int computeIDC(int IPW, int rpm1, int rpm2)
